@@ -17,31 +17,32 @@ import json
 import numpy as np
 import os
 
-# https://gluon.mxnet.io/chapter02_supervised-learning/softmax-regression-scratch.html
-N_CLASS = 10
-
-# Max number of epochs to run
-MAX_EPOCHS = 50000
-
 # Image dimensions
 IMG_WIDTH = 71
 IMG_HEIGHT = 77
 # There are 5000 training images
 DATA_SIZE = 5000
 
+# https://gluon.mxnet.io/chapter02_supervised-learning/softmax-regression-scratch.html
+N_CLASS = 10
+N_FEATURES = IMG_WIDTH*IMG_HEIGHT
+
+# Max number of epochs to run
+MAX_EPOCHS = 50000
+
 # Learning rate
 L_RATE = 1e-3
 
 # Stop training if loss variates less than this
-MAX_DLOSS = 1e-7
+MAX_DLOSS = 1e-5
 
 # Batch gradient descent parameter
 # https://towardsdatascience.com/gradient-descent-algorithm-and-its-variants-10f652806a3
 BATCH_SIZE = 32
 
 # Output file name
-FILENAME = "multiclass_logistic_regression.json"
-OUTPUT_FILENAME = "multiclass_logistic_regression.output"
+FILENAME = "mlp.json"
+OUTPUT_FILENAME = "mlp.output"
 
 def get_args(argv=None):
     parser = argparse.ArgumentParser(description="Load a database and train on it.")
@@ -106,86 +107,145 @@ def load_training_images(path, validation_percentage):
 def create_one_hot(iClass, number_of_classes):
     one_hot = np.zeros(number_of_classes)
     one_hot[iClass] = 1
+    # for i in range(number_of_classes):
+    #     one_hot[i] = 1e-2
+    # one_hot[iClass] = 1 - ((number_of_classes - 1) * 1e-2)
     return one_hot
 
 def linear_regression(x, w, b):
+    # print(x.shape)
     y = np.dot(x, w) + b
     return y
+
+def sigmoid(Z):
+    return 1/(1+np.exp(-Z))
+
+# https://machinelearningmastery.com/implement-backpropagation-algorithm-scratch-python/
+def sigmoid_derivative(output):
+    return sigmoid(output) * (1 - sigmoid(output))
+
+def loss_function(y_predicted, y):
+    # N = len(y)
+    # print(np.sum((np.array(y_predicted) - np.array(y))**2))
+    loss = np.sum((np.array(y_predicted) - np.array(y)) ** 2) / N_CLASS
+    return loss
+
+def loss_function_derivative(output, expected):
+    return (output - expected) * sigmoid_derivative(output)
 
 def softmax(z):
     ez = np.exp(z)
     return ez/np.sum(ez)
 
-# Cost function
-def cross_entropy(yhat, one_hot):
-    # return -(np.sum(one_hot * np.log(yhat+1e-6)))
-    return -(np.sum(one_hot * np.log(yhat)))
+class Layer(object):
+    """
+        This is a Neural Network layer.
+    """
 
-# It returns a vector with each position being the probability of being from thath class
-def net(x, w, b):
-    y_linear = linear_regression(x, w, b)
-    yhat = softmax(y_linear)
-    return yhat
+    def __init__(self, input_size, output_size, role='hidden'):
+        self.role = role
+        self.weights = np.full((input_size, output_size), 1/output_size)
+        self.bias = np.full((output_size), 1/output_size)
 
-def gradient_descent_step(b0, w0, images, learning_rate=L_RATE):
-    # compute gradients
-    w_grad = np.ones((N_CLASS, IMG_WIDTH*IMG_HEIGHT))
-    b_grad = np.zeros(N_CLASS)
-    N = len(images)
-    cumulative_loss = 0
-    scores = []
-    for i in range(N):
-        # Observation
-        x = images[i][0]
-        # Label
-        y = images[i][1]
-        label_one_hot = create_one_hot(y, N_CLASS)
-        # Compute linear regression with initial weight/bias
-        # We transpose weight matrix because of its dimensions
-        y_probs = net(x, w0.T, b0)
-        y_probs_loss = cross_entropy(y_probs, label_one_hot)
-        cumulative_loss += np.sum(y_probs_loss)
-        # https://madalinabuzau.github.io/2016/11/29/gradient-descent-on-a-softmax-cross-entropy-cost-function.html
-        dscores = y_probs
-        dscores[y] -= 1
-        dscores /= N
-        scores.append(dscores)
-        # b_grad is the derivative of the loss in the direction of the bias
-        b_grad += dscores
+    # X is layer's input
+    # z is layer's linear regression
+    # a is layer's output (after activation)
+    def forward(self, X):
+        # print(self.role + "-->")
+        self.X = X
+        if self.role == 'output':
+            self.A = self.activation(X)
+        else:
+            self.Z = linear_regression(X, self.weights, self.bias)
+            self.A = self.activation(self.Z)
+        return self.A
 
-    # Cross-entropy is not element-wise
-    X = np.array([images[i][0] for i in range(N)])
-    # w_grad is the derivative of the loss in the direction of the weights
-    w_grad = np.dot(X.T, np.array(scores)).T
+    def backward(self, expected):
+        if self.role == 'output':
+            self.dA = loss_function_derivative(self.A, expected)
+        else:
+            # Modo correto mas não roda por conta das dimensões
+            # self.dZ = sigmoid_derivative(self.Z)
+            # self.dA = self.dZ * np.dot(expected, self.weights.T)
+            # self.dW = self.dA * self.X
+            # self.dB = np.sum(self.dA)
 
-    # update parameters
-    b1 = b0 - (learning_rate * b_grad)
-    w1 = w0 - (learning_rate * w_grad)
+            # Assim funciona mas está incorreto
+            self.dZ = sigmoid_derivative(self.Z)
+            self.dA = np.sum(self.dZ) * np.dot(expected, self.weights.T)
+            self.dW = self.dA * self.X
+            self.dB = np.sum(self.dA)
 
-    return b1, w1, (cumulative_loss/N)
+        return self.dA
 
-# It returns a class for that image
-def predict(image, weights, bias):
-    y_probs = net(image, weights, bias)
-    return np.argmax(y_probs)
+    def update(self, learning_rate=L_RATE):
+        if self.role != 'output':
+            # Modo correto mas não roda por conta das dimensões
+            # self.weights -= (learning_rate * self.dW)
+            # Assim funciona
+            for i in range(N_CLASS):
+                self.weights[:,i] -= (learning_rate * self.dW)
+            self.bias -= (learning_rate * self.dB)
+        return
 
-def get_accuracy(bias, weights, images):
+    def activation(self, z):
+        if self.role == 'hidden':
+            return sigmoid(z)
+        return z
+        # elif self.role == 'output':
+        #     # output layer will give out a one_hot as output
+        #     return create_one_hot(np.argmax(z), N_CLASS)
+            # print("z: {}".format(z))
+            # return np.argmax(z)
+
+
+def net_forward(model, image):
+    a = image
+    # a = model['input_layer'].forward(image)
+    for layer in model['hidden_layers']:
+        a = layer.forward(a)
+    prediction = model["output_layer"].forward(a)
+
+    return prediction
+
+def net_backward(model, output, expected):
+    dA = model["output_layer"].backward(expected)
+    model["output_layer"].update()
+    # reverse list
+    for layer in model['hidden_layers'][::-1]:
+        dA = layer.backward(dA)
+        layer.update()
+    # model["input_layer"].backward(dA)
+    # model["input_layer"].update()
+
+    return
+
+def get_accuracy(model, images):
     ACC = 0
     N = len(images)
     for i in range(N):
         x = images[i][0]
         y = images[i][1]
         # Don't forget to transpose weights vector
-        y_predicted = predict(x, weights.T, bias)
+        y_predicted = net_forward(model, x)
         # print("\t\t {} : {}".format(y, y_predicted))
-        if y == y_predicted:
+        # y_predicted is a one_hot vector
+        # if y_predicted == y:
+        # if y_predicted[y] == 1:
+        if np.argmax(y_predicted) == y:
             ACC += 1
     return ACC / N
 
-def train(training_images, validation_images, learning_rate=L_RATE, max_epochs=MAX_EPOCHS):
-    # Generate random weights and bias
-    W = np.zeros((N_CLASS, IMG_WIDTH*IMG_HEIGHT))
-    B = np.zeros(N_CLASS)
+def train(training_images, validation_images, learning_rate=L_RATE, max_epochs=MAX_EPOCHS, hidden_layers=1):
+
+    model = {
+        # "input_layer": Layer(N_FEATURES, N_CLASS, role='input'),
+        "hidden_layers": [],
+        "output_layer": Layer(N_CLASS, 1, role='output'),
+    }
+
+    for l in range(hidden_layers):
+        model["hidden_layers"].append(Layer(N_FEATURES, N_CLASS))
 
     # Used to control if we are getting closer to desired loss
     prev_loss = 0
@@ -196,30 +256,42 @@ def train(training_images, validation_images, learning_rate=L_RATE, max_epochs=M
     max_acc_loss = 0
     max_acc_epoch = 0
 
-    out_plot = open('mlr-plot.csv',"w")
+    # Mini-batch gradient descent
+    np.random.shuffle(training_images)
+    batch = training_images[0:BATCH_SIZE]
+    out_plot = open('mlp.csv',"w")
 
     for epoch in range(max_epochs):
         print("* Epoch {}".format(epoch+1))
 
-        # Mini-batch gradient descent
-        np.random.shuffle(training_images)
-        B, W, loss = gradient_descent_step(B, W, training_images[0:BATCH_SIZE])
-        accuracy = get_accuracy(B, W, validation_images)
+        # online learning
+        loss = 0
+        for observation in batch:
+            image = observation[0]
+            label = observation[1]
+            # print("FORWARD")
+            output = net_forward(model, image)
+            # expected = label
+            expected = create_one_hot(label, N_CLASS)
+            # print("{} :: {}".format(output, expected))
+            loss += loss_function(output, expected)
+            # print("BACKWARD")
+            net_backward(model, output, expected)
+            # if accuracy >= max_acc:
+            #     max_acc = accuracy
+            #     max_acc_bias = B
+            #     max_acc_weights = W
+            #     max_acc_loss = loss
+            #     max_acc_epoch = epoch
+
+            # d_loss = abs(loss - prev_loss)
+            # if d_loss <= MAX_DLOSS:
+            #     print("\t\t ** CONVERGED!")
+            #     break
+        accuracy = get_accuracy(model, validation_images)
         out_plot.write("{}, {}, {}\n".format(epoch, loss, accuracy))
         print("+++ ACC: {}".format(accuracy))
-        if accuracy >= max_acc:
-            max_acc = accuracy
-            max_acc_bias = B
-            max_acc_weights = W
-            max_acc_loss = loss
-            max_acc_epoch = epoch
-
         print("--- LOSS: {}".format(loss))
-        d_loss = abs(loss - prev_loss)
-        if d_loss <= MAX_DLOSS:
-            print("\t\t ** CONVERGED!")
-            break
-        prev_loss = loss
 
     if epoch >= max_epochs-1:
         print("\t\t %% MAX EPOCHS REACHED!! %%")
@@ -227,13 +299,14 @@ def train(training_images, validation_images, learning_rate=L_RATE, max_epochs=M
     # model = {
     #     'bias': B.tolist(), 'weights': W.tolist()
     # }
+    out_plot.close()
 
-    model = {
+    result = {
         'last': {'acc': accuracy, 'bias': B.tolist(), 'weights': W.tolist(), 'loss': loss, 'epoch': epoch},
         'best': {'acc': max_acc, 'bias': max_acc_bias.tolist(), 'weights': max_acc_weights.tolist(), 'loss': max_acc_loss, 'epoch': max_acc_epoch}
     }
-    out_plot.close()
-    return model
+
+    return result
 
 def test(path, bias, weights):
 
