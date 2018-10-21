@@ -21,7 +21,7 @@ import os
 N_CLASS = 10
 
 # Max number of epochs to run
-MAX_EPOCHS = 50000
+MAX_EPOCHS = 5000
 
 # Image dimensions
 IMG_WIDTH = 71
@@ -40,8 +40,9 @@ MAX_DLOSS = 1e-7
 BATCH_SIZE = 32
 
 # Output file name
-FILENAME = "multiclass_logistic_regression.json"
+MODEL_FILENAME = "multiclass_logistic_regression.json"
 OUTPUT_FILENAME = "multiclass_logistic_regression.output"
+PLOT_FILE = "mlr-plot.csv"
 
 def get_args(argv=None):
     parser = argparse.ArgumentParser(description="Load a database and train on it.")
@@ -52,12 +53,12 @@ def get_args(argv=None):
 
 def save_model(model):
     json_result = json.dumps(model)
-    f = open(FILENAME,"w")
+    f = open(MODEL_FILENAME,"w")
     f.write(json_result)
     f.close()
 
 def load_model():
-    f = open(FILENAME,"r")
+    f = open(MODEL_FILENAME,"r")
     json_result = json.loads(''.join(f.readlines()))
     f.close()
     return json_result
@@ -129,7 +130,7 @@ def net(x, w, b):
 
 def gradient_descent_step(b0, w0, images, learning_rate=L_RATE):
     # compute gradients
-    w_grad = np.ones((N_CLASS, IMG_WIDTH*IMG_HEIGHT))
+    w_grad = np.zeros((N_CLASS, IMG_WIDTH*IMG_HEIGHT))
     b_grad = np.zeros(N_CLASS)
     N = len(images)
     cumulative_loss = 0
@@ -196,7 +197,7 @@ def train(training_images, validation_images, learning_rate=L_RATE, max_epochs=M
     max_acc_loss = 0
     max_acc_epoch = 0
 
-    out_plot = open('mlr-plot.csv',"w")
+    out_plot = open(PLOT_FILE,"w")
 
     for epoch in range(max_epochs):
         print("* Epoch {}".format(epoch+1))
@@ -235,13 +236,11 @@ def train(training_images, validation_images, learning_rate=L_RATE, max_epochs=M
     out_plot.close()
     return model
 
-def test(path, bias, weights):
+def test(path, weights, bias):
 
     paths = [ i.rstrip() for i in os.popen("ls {}test/* | sort -V".format(path)).readlines() ]
-    names = [ list(filter(None, i.rstrip().rsplit("/")))[-1] for i in os.popen("ls {}test/*".format(path)).readlines() ]
 
     with open(OUTPUT_FILENAME, "w") as f:
-        nimg = 0
         for image_path in paths:
             image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
             # Reshapes image to a 1D vector and normalizes all pixels to [0, 1]
@@ -250,8 +249,9 @@ def test(path, bias, weights):
             # Don't forget to transpose weights vector
             y_predicted = predict(image, weights.T, bias)
 
-            f.write("{} {}\n".format(names[nimg], y_predicted))
-            nimg += 1
+            # Get only image name (e.g. '14734.png')
+            img_name = image_path.rstrip().rsplit("/")[-1]
+            f.write("{} {}\n".format(img_name, y_predicted))
 
     f.close()
 
@@ -263,7 +263,7 @@ def main(args):
     print("\t\t ** SAVING MODEL **")
     save_model(model)
     print("\t\t ** TESTING **")
-    test(args.path, np.array(model['best']['bias']), np.array(model['best']['weights']))
+    test(args.path, np.array(model['best']['weights']), np.array(model['best']['bias']))
 
 if __name__ == "__main__":
     arguments = get_args()
