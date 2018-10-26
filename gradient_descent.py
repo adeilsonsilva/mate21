@@ -4,12 +4,8 @@ import json
 import numpy as np
 import os
 
-MAX_EPOCHS = 5000
-IMG_WIDTH = 71
-IMG_HEIGHT = 77
-L_RATE = 1e-3
-MAX_DLOSS = 1e-5
-BATCH_SIZE = 32
+import common
+
 FILENAME = "gradient_descent.json"
 
 def get_args(argv=None):
@@ -18,46 +14,6 @@ def get_args(argv=None):
     parser.add_argument("-vp", "--validation_percentage", type=float, default=0.25, help="Percentage of training set used as validation.")
     parser.add_argument("-me", "--max_epochs", type=int, default=MAX_EPOCHS, help="Number of epochs to be run.")
     return parser.parse_args(argv)
-
-def load_images(path, validation_percentage):
-    # Load all file paths
-
-    # Get class labels for training
-    # Filters out blank values, removes "\n", splits by "/" and get last position of strip.
-    class_names = [ list(filter(None, i.rstrip().rsplit("/")))[-1] for i in os.popen("ls -1d {}/train/*/".format(path)).readlines() ]
-
-    # 3D Arrays -> each position is an array with an image (which is an array) and a label
-    # training_images[i][0] -> image
-    # training_images[i][1] -> label
-    training_images = []
-    validation_images = []
-
-    # Get images for each class and split into training and validation
-    images_counter = 0
-    for idx in range(0, len(class_names)):
-        # Get all
-        class_images = [ i.rstrip() for i in os.popen("ls {}train/{}/* | sort -V".format(path, class_names[idx])).readlines() ]
-        class_images_len = len(class_images)
-        images_counter += class_images_len
-
-        # Split into training and validation based on idx
-        validation_idx = int(np.floor(class_images_len * validation_percentage))
-
-        # Load training images
-        for image_path in class_images[:class_images_len - validation_idx - 1]:
-            image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-            # Reshapes image to a 1D vector and converts all pixels to [0, 1]
-            image = image.reshape(IMG_WIDTH*IMG_HEIGHT) / 255.0
-            training_images.append([ image, idx ])
-
-        # Load validation images
-        for image_path in class_images[class_images_len - validation_idx:]:
-            image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-            # Reshapes image to a 1D vector and converts all pixels to [0, 1]
-            image = image.reshape(IMG_WIDTH*IMG_HEIGHT) / 255.0
-            validation_images.append([ image, idx ])
-
-    return training_images, validation_images
 
 def linear_regression(x, w, b):
     y = np.dot(x, w) + b
@@ -146,25 +102,13 @@ def train(training_images, validation_images, learning_rate=L_RATE, max_epochs=M
 
     return model
 
-def save_model(model):
-    json_result = json.dumps(model)
-    f = open(FILENAME,"w")
-    f.write(json_result)
-    f.close()
-
-def load_model():
-    f = open(FILENAME,"r")
-    json_result = json.loads(''.join(f.readlines()))
-    f.close()
-    return json_result
-
 def main(args):
     print("\t\t ** LOADING IMAGES **")
     training_images, validation_images = load_images(args.path, args.validation_percentage)
     print("\t\t ** TRAINING MODEL **")
     model = train(training_images, validation_images)
     print("\t\t ** SAVING MODEL **")
-    save_model(model)
+    save_model(model, FILENAME)
 
 if __name__ == "__main__":
     arguments = get_args()
