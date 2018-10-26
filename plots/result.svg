@@ -280,7 +280,7 @@
 </g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="0.25" stroke-linecap="butt" stroke-linejoin="miter">
 	<g transform="translate(323.4,31.0)" stroke="none" fill="black" font-family="Arial" font-size="12.00"  text-anchor="middle">
-		<text><tspan font-family="Arial" >LR - Tensorflow</tspan></text>
+		<text><tspan font-family="Arial" >Multilayer Perceptron - Tensorflow</tspan></text>
 	</g>
 </g>
 	<g id="gnuplot_plot_1" ><title>T. ACC</title>

@@ -31,7 +31,7 @@ NUM_CHANNELS = 1
 DATA_SIZE = 5000
 
 # Learning rate
-L_RATE = 1e-3
+L_RATE = 1e-1
 
 # Stop training if loss variates less than this
 MAX_DLOSS = 1e-7
