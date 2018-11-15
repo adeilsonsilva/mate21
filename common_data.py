@@ -35,6 +35,7 @@ L_RATE = 1e-1
 
 # Stop training if loss variates less than this
 MAX_DLOSS = 1e-7
+MIN_STD = 1e-3
 
 # Batch gradient descent parameter
 # https://towardsdatascience.com/gradient-descent-algorithm-and-its-variants-10f652806a3
@@ -52,7 +53,7 @@ def load_model(model_path):
     f.close()
     return json_result
 
-def load_training_images(path, validation_percentage):
+def load_training_images(path, validation_percentage, as_vector = True):
     # Load all file paths
 
     # Get class labels for training
@@ -80,14 +81,20 @@ def load_training_images(path, validation_percentage):
         for image_path in class_images[:class_images_len - validation_idx - 1]:
             image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
             # Reshapes image to a 1D vector and normalizes all pixels to [0, 1]
-            image = image.reshape(IMG_WIDTH*IMG_HEIGHT*NUM_CHANNELS) / 255.0
+            if as_vector:
+                image = image.reshape(IMG_WIDTH*IMG_HEIGHT*NUM_CHANNELS) / 255.0
+            else:
+                image = image.reshape(IMG_HEIGHT, IMG_WIDTH, NUM_CHANNELS) / 255.0
             training_images.append([ image, idx ])
 
         # Load validation images
         for image_path in class_images[class_images_len - validation_idx:]:
             image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
             # Reshapes image to a 1D vector and normalizes all pixels to [0, 1]
-            image = image.reshape(IMG_WIDTH*IMG_HEIGHT*NUM_CHANNELS) / 255.0
+            if as_vector:
+                image = image.reshape(IMG_WIDTH*IMG_HEIGHT*NUM_CHANNELS) / 255.0
+            else:
+                image = image.reshape(IMG_HEIGHT, IMG_WIDTH, NUM_CHANNELS) / 255.0
             validation_images.append([ image, idx ])
 
     return np.array(training_images), np.array(validation_images)
