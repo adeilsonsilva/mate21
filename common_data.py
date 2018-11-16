@@ -39,7 +39,7 @@ MIN_STD = 1e-3
 
 # Batch gradient descent parameter
 # https://towardsdatascience.com/gradient-descent-algorithm-and-its-variants-10f652806a3
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 
 def save_model(model, model_path):
     json_result = json.dumps(model)

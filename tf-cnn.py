@@ -49,27 +49,37 @@ def create_tf_graph():
         print("X: {}".format(X.shape))
 
         # Input layer
-        X_norm = tf.layers.batch_normalization(X, training=is_training)
-        out = tf.layers.dropout(X_norm, 0.2)
+        out = tf.layers.batch_normalization(X, training=is_training)
+        # out = tf.layers.dropout(out, 0.25)
         print("Input Layer: {}".format(out.shape))
 
         # CNN layers
-        out = tf.layers.conv2d(out, 64, (3, 3), (3, 3), padding='same')
+        out = tf.layers.conv2d(out, 32, (8, 8), (1, 1), padding='same')
         print("Conv. Layer 1: {}".format(out.shape))
-        out = tf.layers.max_pooling2d(out, (2, 2), (2, 2), padding='same')
-        print("Max Pooling Layer 1: {}".format(out.shape))
-        out = tf.layers.conv2d(out, 128, (3, 3), (3, 3), padding='valid')
+        out = tf.layers.batch_normalization(out, training=is_training)
+        # out = tf.layers.max_pooling2d(out, (2, 2), (2, 2), padding='same')
+        # print("Max Pooling Layer 1: {}".format(out.shape))
+        out = tf.layers.conv2d(out, 64, (5, 5), (5, 5), padding='valid')
         print("Conv. Layer 2: {}".format(out.shape))
         out = tf.layers.max_pooling2d(out, (2, 2), (2, 2), padding='valid')
+        out = tf.layers.batch_normalization(out, training=is_training)
         print("Max Pooling Layer 2: {}".format(out.shape))
+        # out = tf.layers.conv2d(out, 128, (3, 3), (3, 3), padding='valid')
+        # print("Conv. Layer 3: {}".format(out.shape))
+        # out = tf.layers.max_pooling2d(out, (2, 2), (2, 2), padding='valid')
+        # print("Max Pooling Layer 3: {}".format(out.shape))
 
         # Hidden layers
         out = tf.reshape(out, [-1, out.shape[1]*out.shape[2]*out.shape[3]])
         print("Reshape for Hidden Layers: {}".format(out.shape))
-        # out = tf.layers.dropout(out, 0.5)
-        out = tf.layers.dense(out, 512, activation=tf.nn.relu)
+        out = tf.layers.dense(out, 1024, activation=tf.nn.relu)
+        out = tf.layers.batch_normalization(out, training=is_training)
         print("Hidden Layer 1: {}".format(out.shape))
+        out = tf.layers.dense(out, 512, activation=tf.nn.relu)
+        out = tf.layers.batch_normalization(out, training=is_training)
+        print("Hidden Layer 2: {}".format(out.shape))
         out = tf.layers.dense(out, 256, activation=tf.nn.relu)
+        out = tf.layers.batch_normalization(out, training=is_training)
         print("Hidden Layer 2: {}".format(out.shape))
 
         # Output layer
@@ -83,8 +93,8 @@ def create_tf_graph():
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
             train_op = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.485762).minimize(loss)
-        # train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
-        # train_op = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(loss)
+            # train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
+            # train_op = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(loss)
 
         result = tf.argmax(out, 1)
         correct = tf.reduce_sum(tf.cast(tf.equal(result, y), tf.float32))
@@ -167,7 +177,7 @@ def train(training_images, validation_images, path, l_rate = common_data.L_RATE,
             # Reshapes image to a 1D vector and normalizes all pixels to [0, 1]
             image = image.reshape(common_data.IMG_HEIGHT, common_data.IMG_WIDTH, common_data.NUM_CHANNELS) / 255.0
 
-            y_predicted = session.run([tf_result], feed_dict = {tf_X: [image]})
+            y_predicted = session.run([tf_result], feed_dict = {tf_X: [image], tf_isTraining: False})
 
             # Get only image name (e.g. '14734.png')
             img_name = image_path.rstrip().rsplit("/")[-1]
