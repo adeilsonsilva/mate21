@@ -1,0 +1,46 @@
+batch_normalization
+dropout 20% input
+
+2 conv (64, 128)
+2 avg pooling
+
+2 hidden (512, 256)
+
+dropout 50% dps do 1o pooling layer
+
+
+===
+
+batch_normalization
+dropout 25% input
+
+2 conv (32 - 5x5, 64, 3x3)
+2 max pooling
+
+1 hidden (128)
+
+dropout 50% dps do 1o pooling layer
+
+===
+
+batch_normalization
+dropout 25% input
+
+2 conv (32 - 5x5 stride 5x5, 64, 3x3 stride 1x1)
+1 max pooling 2x2
+
+1 hidden (1024)
+
+dropout 50% dps do dense layer
+
+===
+
+batch_normalization
+dropout 25% input
+
+2 conv (32 - 5x5 stride 5x5, 64, 3x3 stride 1x1)
+1 max pooling 2x2
+
+4 hidden (1024, 512, 256, 128)
+
+dropout 50% dps do dense layer
