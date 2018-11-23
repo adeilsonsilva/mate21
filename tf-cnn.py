@@ -107,8 +107,7 @@ def get_accuracy(tf_session, images, tf_X, tf_y, tf_isTraining, tf_loss, tf_corr
     # Number of images
     N = images.shape[0]
 
-    my_X = np.array([ i for i in images[:,0] ])
-    my_y = np.array([ i for i in images[:,1] ])
+    my_X, my_y = common_data.load_batch(images, augmentation=False)
 
     eval_loss, eval_acc = tf_session.run([tf_loss, tf_correct], feed_dict = {tf_X: my_X, tf_y: my_y, tf_isTraining: False})
 
@@ -145,13 +144,8 @@ def train(training_images, validation_images, path, l_rate = common_data.L_RATE,
             train_acc = 0
             train_loss = 0
             for idx in range(0, training_set_size, common_data.BATCH_SIZE):
-                batch = training_images[idx:idx+common_data.BATCH_SIZE]
-                my_X = np.array([ i for i in batch[:,0] ])
-                my_y = np.array([ i for i in batch[:,1] ])
-                # my_X = batch[:,0]
-                # my_y = batch[:,1]
-                # print("&&&& {}".format(my_X))
-                # print("&&&& {}".format(my_y))
+                # Load images only when used
+                my_X, my_y = common_data.load_batch(training_images[idx:idx+common_data.BATCH_SIZE], augmentation=True)
                 ret = session.run([tf_optimizer, tf_loss, tf_correct], feed_dict = {tf_X: my_X, tf_y: my_y, tf_lr: l_rate, tf_isTraining: True})
                 train_loss += ret[1]
                 train_acc += ret[2]
@@ -174,7 +168,6 @@ def train(training_images, validation_images, path, l_rate = common_data.L_RATE,
         f = open(OUTPUT_FILENAME, "w")
         for image_path in paths:
             image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-            # Reshapes image to a 1D vector and normalizes all pixels to [0, 1]
             image = image.reshape(common_data.IMG_HEIGHT, common_data.IMG_WIDTH, common_data.NUM_CHANNELS) / 255.0
 
             y_predicted = session.run([tf_result], feed_dict = {tf_X: [image], tf_isTraining: False})
@@ -190,7 +183,7 @@ def train(training_images, validation_images, path, l_rate = common_data.L_RATE,
 
 def main(args):
     print("\t\t ** LOADING IMAGES **")
-    training_images, validation_images = common_data.load_training_images(args.path, args.validation_percentage, as_vector = False)
+    training_images, validation_images = common_data.load_training_images(args.path, args.validation_percentage, as_vector = False, return_paths = True)
     print("\t\t ** {} {} **".format(training_images.shape, validation_images.shape))
     print("\t\t ** TRAINING MODEL **")
     train(training_images, validation_images, args.path, max_epochs = args.max_epochs)
