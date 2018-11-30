@@ -21,7 +21,7 @@ import random
 N_CLASS = 10
 
 # Max number of epochs to run
-MAX_EPOCHS = 1
+MAX_EPOCHS = 50
 
 # Image dimensions
 IMG_WIDTH = 71
@@ -57,12 +57,19 @@ def load_model(model_path):
 # Generate a random number and apply the change
 def augmentate(image):
 
-    # Rotates by an angle of [1, 5]
+    # Rotates by an angle of [1, 10]
     if (random.random() >= 0.5):
-        angle = random.randint(1, 15)
+        angle = random.randint(1, 10)
         image_center = tuple(np.array(image.shape[1::-1]) / 2)
         rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
         image = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
+
+    # Translates by [1, 10] pixels
+    if (random.random() >= 0.5):
+        tx = random.randint(1, 10)
+        ty = random.randint(1, 10)
+        transl_mat = np.float32([ [1, 0, tx], [0, 1, ty] ])
+        image = cv2.warpAffine(image, transl_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
 
     # Flips horizontally
     # if (random.random() >= 0.5):
@@ -77,7 +84,7 @@ def augmentate(image):
     # Uniform noise
     if (random.random() >= 0.5):
         noise =  image.copy()
-        cv2.randu(noise, (0), (1))
+        cv2.randu(noise, (0), (5))
         image += noise
 
     # print(image.shape)
