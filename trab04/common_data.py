@@ -21,7 +21,7 @@ import random
 N_CLASS = 10
 
 # Max number of epochs to run
-MAX_EPOCHS = 50
+MAX_EPOCHS = 1
 
 # Image dimensions
 IMG_WIDTH = 71
@@ -65,8 +65,8 @@ def augmentate(image):
         image = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
 
     # Flips horizontally
-    if (random.random() >= 0.5):
-        cv2.flip(image, 1, image)
+    # if (random.random() >= 0.5):
+    #     cv2.flip(image, 1, image)
 
     # Gaussian noise
     # if (random.random() >= 0.5):
